@@ -3,6 +3,8 @@ import sqlite3
 from flask import Flask, request, jsonify
 import requests
 from datetime import datetime
+This module provides Flask-JWT-Extended integration, including functions for creating and verifying JSON Web Tokens (JWT) for user authentication and authorization. The `JWTManager` class is used to initialize the JWT extension, while `jwt_required`, `create_access_token`, and `get_jwt_identity` are utility functions for managing JWT-based authentication in Flask routes.
+
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 
 # Flask App Initialization
