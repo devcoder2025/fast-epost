@@ -8,6 +8,8 @@ bp = Blueprint('tracking', __name__)
 
 @bp.route('/monitor', methods=['GET'])
 @jwt_required()
+@limiter.limit("10 per minute")
+@cache.cached(timeout=60)
 def monitor_packages():
     packages = Package.query.filter_by(status='in_warehouse').all()
     alerts = []
