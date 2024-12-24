@@ -10,21 +10,14 @@ class Message:
     sender: str
 
 class MessageHandler:
-    def __init__(self, websocket_manager):
-        self.ws_manager = websocket_manager
+    def __init__(self, ws_manager):
+        self.ws_manager = ws_manager
         self.handlers = {}
         
-    def register_handler(self, event: str, handler: callable):
+    def register_handler(self, event, handler):
         self.handlers[event] = handler
         
-    async def process_message(self, message: Message):
+    async def process_message(self, message):
         if handler := self.handlers.get(message.event):
             response = await handler(message.data)
-            await self.ws_manager.broadcast(
-                message.channel,
-                {
-                    'event': message.event,
-                    'data': response,
-                    'sender': message.sender
-                }
-            )
+            await self.ws_manager.broadcast(message.channel, response)

@@ -3,10 +3,10 @@ import asyncio
 
 class ChannelManager:
     def __init__(self):
-        self.channels: Dict[str, Set[str]] = {}
-        self.user_channels: Dict[str, Set[str]] = {}
+        self.channels = {}
+        self.user_channels = {}
         
-    async def create_channel(self, channel_id: str, owner: str):
+    async def create_channel(self, channel_id, owner):
         self.channels[channel_id] = {owner}
         if owner not in self.user_channels:
             self.user_channels[owner] = set()

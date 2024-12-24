@@ -4,10 +4,10 @@ class PresenceTracker:
     def __init__(self):
         self.online_users = {}
         
-    def mark_online(self, user_id: str):
+    def mark_online(self, user_id):
         self.online_users[user_id] = datetime.now()
         
-    def mark_offline(self, user_id: str):
+    def mark_offline(self, user_id):
         if user_id in self.online_users:
             del self.online_users[user_id]
             
