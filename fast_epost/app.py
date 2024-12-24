@@ -21,3 +21,38 @@ async def process_batch_files(files: list):
     with monitor.measure("batch_processing"):
         results = await batch_processor.process_batch(files)
         return results
+
+from fast_epost.security.auth import JWTAuth
+from fast_epost.settings import Settings
+
+auth = JWTAuth(secret_key=Settings.get_setting('JWT_SECRET_KEY'))
+
+@app.route('/secure-endpoint')
+@auth.token_required
+def secure_endpoint():
+    return jsonify({'message': 'Access granted'})
+
+@app.route('/login', methods=['POST'])
+def login():
+    user_data = request.get_json()
+    token = auth.generate_token(user_data)
+    return jsonify({'token': token})
+
+from fast_epost.security.rate_limiter import RateLimiter
+
+rate_limiter = RateLimiter(limit=60, window=60)
+
+@app.route('/api/endpoint')
+@rate_limiter.limiter
+@auth.token_required
+def protected_endpoint():
+    return jsonify({'message': 'Access granted'})
+
+from fast_epost.security import SecurityManager
+
+security = SecurityManager(secret_key=Settings.get_setting('SECRET_KEY'))
+
+@app.route('/api/secure-data')
+@security.secure_endpoint
+def get_secure_data():
+    return jsonify({'data': 'secure content'})
