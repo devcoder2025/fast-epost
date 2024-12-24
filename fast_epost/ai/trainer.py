@@ -6,8 +6,7 @@ class BERTTrainer:
     def __init__(self, model: WatchlistBERT):
         self.model = model
         self.optimizer = AdamW(model.model.parameters(), lr=2e-5)
-        self.epochs = 3        
-    def train(self, dataset):
+        self.epochs = 3    def train(self, dataset):
         train_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         
         print("Starting BERT fine-tuning...")

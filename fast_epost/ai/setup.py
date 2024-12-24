@@ -6,7 +6,7 @@ import logging
 class AISetup:
     def __init__(self):
         self.model_dir = 'models/watchlist_bert'
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     def install(self):
         # Download and save BERT model
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
