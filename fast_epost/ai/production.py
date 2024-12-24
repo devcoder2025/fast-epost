@@ -18,20 +18,16 @@ class ProductionAI:
             results = self.ai.predict(batch)
             predictions.update({text: float(pred) for text, pred in zip(batch, results)})
         return predictions
-
-# 1. Test the agent with more complex inputs
+# Let's engage with the AI
 ai_agent = ProductionAI()
 
-# 2. Process a variety of text types
-diverse_texts = [
-    "Technical documentation about AI",
-    "Casual conversation message",
-    "Business proposal content"
+# Test it with some interesting content
+test_messages = [
+    "This is a fantastic new development",
+    "Looking forward to great results",
+    "The future of AI is bright"
 ]
-results = ai_agent.process_batch(diverse_texts)
-print(f"Results for diverse texts: {results}")
 
-# 3. Scale up processing
-large_batch = ["Message " + str(i) for i in range(50)]
-batch_results = ai_agent.process_batch(large_batch)
-print(f"Results for large batch: {batch_results}")
+# Get the predictions
+results = ai_agent.process_batch(test_messages)
+print("AI Analysis Results:", results)
