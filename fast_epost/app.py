@@ -6,12 +6,18 @@ from fast_epost.batch import BatchProcessor, BatchJob
 template_cache = TemplateCache(cache_size=CACHE_CONFIG['template_cache_size'])
 file_handler = AsyncFileHandler()
 batch_processor = BatchProcessor(max_concurrent=CACHE_CONFIG['max_concurrent_transfers'])
+from fast_epost.monitoring import PerformanceMonitor
+from fast_epost.settings import Settings
 
-# Example usage
-async def handle_template(template_path: str):
-    return template_cache.get_template(template_path)
-    
-async def process_files(files: List[str], destination: str):
-    batch = BatchJob(files=files, destination=destination)
-    results = await batch_processor.process_batch(batch)
-    return results
+monitor = PerformanceMonitor()
+settings = Settings()
+
+async def process_template(template_path: str):
+    with monitor.measure("template_processing"):
+        template = template_cache.get_template(template_path)
+        return template
+
+async def process_batch_files(files: list):
+    with monitor.measure("batch_processing"):
+        results = await batch_processor.process_batch(files)
+        return results
