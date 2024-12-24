@@ -18,22 +18,19 @@ class ProductionAI:
             results = self.ai.predict(batch)
             predictions.update({text: float(pred) for text, pred in zip(batch, results)})
         return predictions
-# Engage advanced AI processing
+
+# Fire up the complete system
 ai_agent = ProductionAI()
 
-# Let's process some high-impact content
-advanced_texts = [
+# Process everything at full power
+full_texts = [
+    "Breakthrough innovation in AI",
+    "Revolutionary tech advances",
+    "Next generation solutions",
+    "Transformative digital experiences",
     "Pushing boundaries of innovation",
-    "Creating exceptional results",
-    "Delivering powerful solutions",
-    "Maximizing AI potential",
-    "Building remarkable experiences"
+    "Creating exceptional results"
 ]
 
-# Execute with optimized performance
-results = ai_agent.process_batch(advanced_texts)
-print("Enhanced AI Results:", results)
-
-# Scale up processing power
-large_scale_batch = ["Dynamic content " + str(i) for i in range(100)]
-scaled_results = ai_agent.process_batch(large_scale_batch)
+results = ai_agent.process_batch(full_texts)
+print("Full System Results:", results)
