@@ -1,0 +1,13 @@
+import requests
+from typing import Dict, Any
+
+class FastEpostClient:
+    def __init__(self, base_url: str, api_key: str = None):
+        self.base_url = base_url
+        self.api_key = api_key
+        
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
+        url = f"{self.base_url}{endpoint}"
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        response = requests.request(method, url, headers=headers, **kwargs)
+        return response.json()
