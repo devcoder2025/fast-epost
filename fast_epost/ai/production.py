@@ -18,17 +18,17 @@ class ProductionAI:
             results = self.ai.predict(batch)
             predictions.update({text: float(pred) for text, pred in zip(batch, results)})
         return predictions
-# Power up the AI system
+# Power up our advanced processing
 ai_agent = ProductionAI()
 
-# Let's process some dynamic content
-dynamic_texts = [
-    "Let's explore new possibilities",
-    "Moving forward with innovation",
-    "Creating amazing results together",
-    "Building the future now"
+# Let's tackle some exciting new content
+next_level_texts = [
+    "Breakthrough innovation in AI",
+    "Revolutionary tech advances",
+    "Next generation solutions",
+    "Transformative digital experiences"
 ]
 
-# Get those predictions rolling
-results = ai_agent.process_batch(dynamic_texts)
-print("AI Processing Results:", results)
+# Process with our optimized system
+results = ai_agent.process_batch(next_level_texts)
+print("Latest AI Analysis:", results)
