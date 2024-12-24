@@ -1,24 +1,21 @@
-
 import time
 from contextlib import contextmanager
 import logging
+from .tracing import TracingSystem
+from .metrics import MetricsCollector
+from .dashboard import DashboardManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class PerformanceMonitor:
+class MonitoringSystem:
     def __init__(self):
-        self.metrics = {}
+        self.tracer = TracingSystem()
+        self.metrics = MetricsCollector()
+        self.dashboard = DashboardManager()
         
-    @contextmanager
-    def measure(self, operation_name: str):
-        start = time.perf_counter()
-        try:
-            yield
-        finally:
-            duration = time.perf_counter() - start
-            self.metrics[operation_name] = duration
-            logger.info(f"Operation {operation_name} took {duration:.4f} seconds")
-            
-    def get_metrics(self):
-        return self.metrics
+    def monitor(self, f):
+        @self.tracer.trace_request
+        def wrapped(*args, **kwargs):
+            return f(*args, **kwargs)
+        return wrapped

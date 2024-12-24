@@ -12,16 +12,11 @@ from fast_epost.security.auth import JWTAuth
 from fast_epost.security.rate_limiter import RateLimiter
 from fast_epost.security import SecurityManager
 
-
-
-
 # Initialize components
 setup_heroku_logging()
 db = get_db_connection()
 storage = HerokuStorage()
 app = Flask(__name__)
-
-
 
 # Configure app
 app.config.update(
@@ -87,3 +82,26 @@ def upload_file():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
+from fast_epost.monitoring.dashboard import dashboard, DashboardManager
+
+app.register_blueprint(dashboard, url_prefix='/monitoring')
+dashboard_manager = DashboardManager()
+
+@app.route('/monitoring/dashboard')
+@auth.token_required
+def view_dashboard():
+    return render_template(
+        'dashboard.html',
+        metrics_chart=dashboard_manager.generate_metrics_chart(),
+        stats=dashboard_manager.get_system_stats()
+    )
+
+from fast_epost.monitoring import MonitoringSystem
+
+monitoring = MonitoringSystem()
+
+@app.route('/api/data')
+@monitoring.monitor
+def get_data():
+    return jsonify({'status': 'success'})
