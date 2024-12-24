@@ -18,21 +18,19 @@ class ProductionAI:
             results = self.ai.predict(batch)
             predictions.update({text: float(pred) for text, pred in zip(batch, results)})
         return predictions
-
-# 1. Direct instantiation
+# Create the agent instance
 ai_agent = ProductionAI()
 
-# 2. Single text analysis
-result = ai_agent.process_batch(["Your text here"])
+# View predictions with sample text
+test_text = ["Hello, this is a test message"]
+predictions = ai_agent.process_batch(test_text)
+print(f"Prediction results: {predictions}")
 
-# 3. Multiple texts at once
-texts = [
-    "First message",
-    "Second message",
-    "Third message"
+# View batch processing in action
+multiple_texts = [
+    "First message to analyze",
+    "Second message to check",
+    "Third message to process"
 ]
-results = ai_agent.process_batch(texts)
-
-# 4. Batch processing with the configured batch_size of 32
-large_texts = ["Text " + str(i) for i in range(100)]
-batch_results = ai_agent.process_batch(large_texts)
+batch_results = ai_agent.process_batch(multiple_texts)
+print(f"Batch processing results: {batch_results}")
