@@ -105,3 +105,15 @@ monitoring = MonitoringSystem()
 @monitoring.monitor
 def get_data():
     return jsonify({'status': 'success'})
+
+from fast_epost.deployment.dashboard import deployment_dashboard, DeploymentDashboard
+
+# Register the dashboard blueprint
+app.register_blueprint(deployment_dashboard, url_prefix='/deployment')
+
+# Initialize dashboard
+dashboard = DeploymentDashboard()
+
+@app.route('/deployment/status')
+def deployment_status():
+    return dashboard.render_dashboard()
