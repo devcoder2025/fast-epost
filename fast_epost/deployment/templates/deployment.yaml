@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fast-epost
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fast-epost
+  template:
+    metadata:
+      labels:
+        app: fast-epost
+    spec:
+      containers:
+      - name: fast-epost
+        image: fast-epost:latest

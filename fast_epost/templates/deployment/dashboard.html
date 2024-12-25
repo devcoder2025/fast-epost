@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deployment Dashboard</title>
+</head>
+<body>
+    <h1>Deployment Status</h1>
+    <div class="stats">
+        <h2>Success Rate: {{ stats.success_rate }}%</h2>
+        <h2>Average Duration: {{ stats.average_duration }}s</h2>
+    </div>
+    <div class="deployments">
+        {% for deployment in stats.deployments %}
+            <div class="deployment-card">
+                <h3>{{ deployment.environment }}</h3>
+                <p>Version: {{ deployment.version }}</p>
+                <p>Status: {{ deployment.status }}</p>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

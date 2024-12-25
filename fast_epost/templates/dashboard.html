@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fast-Epost Monitoring Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>System Performance Dashboard</h1>
+    <div class="metrics-chart">
+        {{ metrics_chart | safe }}
+    </div>
+    <div class="stats">
+        <h2>System Statistics</h2>
+        <ul>
+            {% for key, value in stats.items() %}
+            <li>{{ key }}: {{ value }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>
