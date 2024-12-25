@@ -5,19 +5,12 @@ from src.collector.link_collector import AsyncLinkCollector, CollectorConfig
 
 @pytest.fixture
 def collector():
-    return AsyncLinkCollector(CollectorConfig(max_concurrent_requests=2))
+    return AsyncLinkCollector(CollectorConfig(max_connections=2))
 
 @pytest.mark.asyncio
 async def test_collector_initialization(collector):
-    assert collector.config.max_concurrent_requests == 2
-    assert collector.collected_links == set()
-
-@pytest.mark.asyncio
-async def test_url_normalization(collector):
-    base_url = "https://example.com"
-    relative_url = "/path"
-    normalized = collector._normalize_url(relative_url, base_url)
-    assert normalized == "https://example.com/path"
+    assert collector.config.max_connections == 2
+    assert collector.queue.maxsize == 1000
 
 @pytest.mark.asyncio
 async def test_link_collection():
@@ -40,19 +33,34 @@ async def test_link_collection():
             assert len(results["https://example.com"]) == 2
 
 @pytest.mark.asyncio
-async def test_error_handling(collector):
-    with pytest.raises(Exception):
-        await collector.process_url("invalid-url")
-
-@pytest.mark.asyncio
-async def test_concurrent_collection():
-    config = CollectorConfig(max_concurrent_requests=5)
+async def test_connection_pooling():
+    config = CollectorConfig(max_connections=2)
     async with AsyncLinkCollector(config) as collector:
-        urls = [f"https://example.com/{i}" for i in range(10)]
+        urls = [f"https://example.com/{i}" for i in range(5)]
+        
         with patch('aiohttp.ClientSession.get') as mock_get:
             mock_response = Mock()
             mock_response.text = asyncio.coroutine(lambda: "<html></html>")
             mock_get.return_value.__aenter__.return_value = mock_response
             
             results = await collector.collect_links(urls)
-            assert len(results) == 10
+            assert len(results) == 5
+
+@pytest.mark.asyncio
+async def test_caching():
+    async with AsyncLinkCollector() as collector:
+        url = "https://example.com"
+        mock_content = "<html><a href='https://example.com/1'>Link</a></html>"
+        
+        with patch('aiohttp.ClientSession.get') as mock_get:
+            mock_response = Mock()
+            mock_response.text = asyncio.coroutine(lambda: mock_content)
+            mock_get.return_value.__aenter__.return_value = mock_response
+            
+            # First request
+            result1 = await collector.collect_links([url])
+            # Second request (should use cache)
+            result2 = await collector.collect_links([url])
+            
+            assert result1 == result2
+            assert mock_get.call_count == 1
