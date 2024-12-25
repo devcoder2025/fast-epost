@@ -2,12 +2,11 @@ import os
 import time
 import shutil
 import logging
-from typing import Tuple, List
-
-from .config import CacheConfig, CacheStats
+from typing import Dict, Any, Optional, Tuple, List
 import psutil
 import zlib
-from typing import Optional
+from collections import OrderedDict
+from threading import Lock
 
 class Cache:
     """
@@ -101,3 +100,74 @@ class Cache:
                     self.logger.error(f"Failed to remove old cache file {fp}: {e}")
         
         return removed
+
+class MemoryCache:
+    def __init__(self, max_size: int = 1000, ttl: int = 3600):
+        self._cache: OrderedDict = OrderedDict()
+        self._max_size = max_size
+        self._ttl = ttl
+        self._lock = Lock()
+        self._stats = {'hits': 0, 'misses': 0}
+
+    def get(self, key: str) -> Optional[Any]:
+        with self._lock:
+            if key not in self._cache:
+                self._stats['misses'] += 1
+                return None
+            
+            value, timestamp = self._cache[key]
+            if time.time() - timestamp > self._ttl:
+                del self._cache[key]
+                self._stats['misses'] += 1
+                return None
+
+            self._cache.move_to_end(key)
+            self._stats['hits'] += 1
+            return value
+
+    def set(self, key: str, value: Any, compress: bool = False) -> None:
+        with self._lock:
+            if compress:
+                value = zlib.compress(str(value).encode())
+            
+            if len(self._cache) >= self._max_size:
+                self._cache.popitem(last=False)
+            
+            self._cache[key] = (value, time.time())
+            self._cache.move_to_end(key)
+
+class EnhancedCache:
+    def __init__(self, base_path: str, memory_cache_size: int = 1000):
+        self.disk_cache = DiskCache(base_path)
+        self.memory_cache = MemoryCache(max_size=memory_cache_size)
+        self._compression_threshold = 1024  # 1KB
+
+    def get(self, key: str) -> Optional[Any]:
+        # Try memory cache first
+        value = self.memory_cache.get(key)
+        if value is not None:
+            return value
+
+        # Fall back to disk cache
+        value = self.disk_cache.get(key)
+        if value is not None:
+            self.memory_cache.set(key, value)
+        return value
+
+    def set(self, key: str, value: Any) -> None:
+        # Determine if compression is needed
+        should_compress = (
+            isinstance(value, (str, bytes)) and 
+            len(str(value)) > self._compression_threshold
+        )
+        
+        self.memory_cache.set(key, value, compress=should_compress)
+        self.disk_cache.set(key, value)
+
+class DiskCache:
+    def __init__(self, base_path: str):
+        self.base_path = base_path
+        self._ensure_cache_dir()
+
+    def _ensure_cache_dir(self) -> None:
+        os.makedirs(self.base_path, exist_ok=True)

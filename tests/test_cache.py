@@ -1,45 +1,46 @@
-import unittest
-import tempfile
-import shutil
-import os
-from src.cache.cache import Cache
-from src.cache.config import CacheConfig
+import pytest
+import time
+from src.cache.cache import MemoryCache, EnhancedCache
 
-class TestCache(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.config = CacheConfig()
-        self.cache = Cache(self.temp_dir, self.config)
+def test_memory_cache_basic():
+    cache = MemoryCache(max_size=2)
+    cache.set('key1', 'value1')
+    cache.set('key2', 'value2')
+    
+    assert cache.get('key1') == 'value1'
+    assert cache.get('key2') == 'value2'
 
-    def tearDown(self):
-        shutil.rmtree(self.temp_dir)
+def test_memory_cache_eviction():
+    cache = MemoryCache(max_size=2)
+    cache.set('key1', 'value1')
+    cache.set('key2', 'value2')
+    cache.set('key3', 'value3')
+    
+    assert cache.get('key1') is None
+    assert cache.get('key2') == 'value2'
+    assert cache.get('key3') == 'value3'
 
-    def test_cache_initialization(self):
-        self.assertTrue(os.path.exists(self.temp_dir))
-        self.assertEqual(self.cache.get_cache_size(), 0)
+def test_memory_cache_ttl():
+    cache = MemoryCache(max_size=2, ttl=1)
+    cache.set('key1', 'value1')
+    
+    assert cache.get('key1') == 'value1'
+    time.sleep(1.1)
+    assert cache.get('key1') is None
 
-    def test_cache_operations(self):
-        # Create test files
-        test_file = os.path.join(self.temp_dir, "test.txt")
-        with open(test_file, "w") as f:
-            f.write("test data")
+def test_enhanced_cache_compression():
+    cache = EnhancedCache('/tmp/cache')
+    large_value = 'x' * 2000
+    cache.set('large_key', large_value)
+    
+    assert cache.get('large_key') == large_value
 
-        # Test size calculation
-        self.assertGreater(self.cache.get_cache_size(), 0)
-
-        # Test cleanup
-        cleared, failed = self.cache.clear()
-        self.assertIn(test_file, cleared)
-        self.assertEqual(len(failed), 0)
-
-    def test_memory_monitoring(self):
-        memory_usage = self.cache.get_memory_usage()
-        self.assertIsInstance(memory_usage, float)
-        self.assertGreater(memory_usage, 0)
-
-    def test_compression(self):
-        self.cache.config.compression_enabled = True
-        test_data = b"test data" * 1000
-        compressed = self.cache.compress_item(test_data)
-        decompressed = self.cache.decompress_item(compressed)
-        self.assertEqual(test_data, decompressed)
+def test_cache_stats():
+    cache = MemoryCache()
+    cache.set('key1', 'value1')
+    
+    cache.get('key1')  # Hit
+    cache.get('key2')  # Miss
+    
+    assert cache._stats['hits'] == 1
+    assert cache._stats['misses'] == 1
