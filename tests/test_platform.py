@@ -1,50 +1,53 @@
-import unittest
+import pytest
 from unittest.mock import patch, mock_open
-from src.platform.detector import PlatformDetector, PlatformInfo
+from src.platform.detector import EnhancedPlatformDetector
 
-class TestPlatformDetector(unittest.TestCase):
-    def setUp(self):
-        self.detector = PlatformDetector()
+@pytest.fixture
+def detector():
+    return EnhancedPlatformDetector()
 
-    @patch('platform.system')
-    def test_system_detection(self, mock_system):
-        mock_system.return_value = 'Linux'
-        with patch('builtins.open', mock_open(read_data='ID="ubuntu"')):
-            info = self.detector.detect()
-            self.assertEqual(info.system, 'ubuntu')
+def test_platform_detection(detector):
+    info = detector.platform_info
+    assert 'system' in info
+    assert 'python_version' in info
+    assert 'architecture' in info
 
-    @patch('platform.machine')
-    def test_architecture_detection(self, mock_machine):
-        mock_machine.return_value = 'x86_64'
-        info = self.detector.detect()
-        self.assertEqual(info.architecture, 'amd64')
-
-    @patch('os.cpu_count')
-    def test_cpu_detection(self, mock_cpu_count):
-        mock_cpu_count.return_value = 4
-        info = self.detector.detect()
-        self.assertEqual(info.cpu_count, 4)
-
-    @patch('os.path.exists')
-    def test_container_detection(self, mock_exists):
+def test_container_detection():
+    with patch('os.path.exists') as mock_exists:
         mock_exists.return_value = True
-        info = self.detector.detect()
-        self.assertIsNotNone(info.container_info)
+        detector = EnhancedPlatformDetector()
+        assert detector.container_info['is_container']
 
-    def test_memory_detection(self):
-        info = self.detector.detect()
-        self.assertIsInstance(info.memory_gb, float)
+def test_resource_limits(detector):
+    limits = detector.resource_limits
+    assert limits.cpu_count > 0
+    assert limits.memory_limit > 0
 
-    @patch('platform.system')
-    @patch('platform.machine')
-    def test_macos_detection(self, mock_machine, mock_system):
-        mock_system.return_value = 'Darwin'
-        mock_machine.return_value = 'arm64'
-        info = self.detector.detect()
-        self.assertEqual(info.system, 'macos')
-        self.assertEqual(info.architecture, 'arm64')
+def test_network_detection(detector):
+    network = detector.network_info
+    assert isinstance(network.interfaces, dict)
+    assert isinstance(network.open_ports, list)
 
-    def test_platform_info_immutability(self):
-        info1 = self.detector.detect()
-        info2 = self.detector.detect()
-        self.assertEqual(info1, info2)
+@pytest.mark.parametrize("cgroup_data,expected", [
+    ("100000 100000", 100000),
+    ("max 100000", None),
+])
+def test_cpu_quota_detection(cgroup_data, expected):
+    with patch('builtins.open', mock_open(read_data=cgroup_data)):
+        with patch('os.path.exists', return_value=True):
+            detector = EnhancedPlatformDetector()
+            assert detector.resource_limits.cpu_quota == expected
+
+def test_kubernetes_detection():
+    with patch('os.path.exists') as mock_exists:
+        mock_exists.return_value = True
+        with patch('builtins.open', mock_open(read_data="default")):
+            detector = EnhancedPlatformDetector()
+            assert detector.container_info['orchestrator'] == 'kubernetes'
+
+def test_full_info(detector):
+    info = detector.get_full_info()
+    assert 'platform' in info
+    assert 'container' in info
+    assert 'resources' in info
+    assert 'network' in info
