@@ -1,0 +1,10 @@
+setup:
+  addons:
+    - plan: heroku-postgresql:hobby-dev
+    - plan: heroku-redis:hobby-dev
+    - plan: cloudamqp:lemur
+
+build:
+  docker:
+    web: Dockerfile
+    worker: Dockerfile.worker
