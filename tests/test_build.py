@@ -1,58 +1,63 @@
 import pytest
+import asyncio
 from pathlib import Path
-from src.build.pyproject import PyProjectManager, BuildSystemConfig
+from unittest.mock import patch, Mock
+from src.build.pyproject import EnhancedPyProjectManager, BuildConfig, BuildCache
 
 @pytest.fixture
-def temp_project(tmp_path):
-    project_dir = tmp_path / "test_project"
-    project_dir.mkdir()
-    return project_dir
-
-def test_pyproject_creation(temp_project):
-    manager = PyProjectManager(str(temp_project))
-    config = BuildSystemConfig(
-        requires=["setuptools>=42", "wheel"],
-        build_backend="setuptools.build_meta"
+def build_manager(tmp_path):
+    config = BuildConfig(
+        requires=["pytest", "requests"],
+        build_backend="setuptools.build_meta",
+        parallel_jobs=2,
+        cache_dir=str(tmp_path / "build_cache")
     )
-    manager.set_build_system(config)
-    manager.save()
-    
-    assert manager.pyproject_path.exists()
+    return EnhancedPyProjectManager(str(tmp_path), config)
 
-def test_load_existing_config(temp_project):
-    original_config = {
-        "build-system": {
-            "requires": ["setuptools>=42", "wheel"],
-            "build-backend": "setuptools.build_meta"
-        }
+@pytest.mark.asyncio
+async def test_dependency_resolution(build_manager):
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = Mock(
+            stdout="Requires: urllib3, certifi\n",
+            returncode=0
+        )
+        await build_manager._process_dependency("requests")
+        assert "requests" in build_manager.dependency_graph
+        assert "urllib3" in build_manager.dependency_graph["requests"]
+
+def test_build_cache():
+    cache = BuildCache(".build_cache")
+    package = "test-package"
+    
+    assert not cache.is_cached(package)
+    cache.cache_package(package)
+    assert cache.is_cached(package)
+
+@pytest.mark.asyncio
+async def test_parallel_builds(build_manager):
+    tasks = []
+    for i in range(3):
+        task = asyncio.create_task(build_manager._build_package(f"package-{i}"))
+        tasks.append(task)
+    
+    with patch('asyncio.create_subprocess_exec') as mock_exec:
+        mock_exec.return_value = Mock(
+            communicate=asyncio.coroutine(lambda: (b"", b"")),
+            returncode=0
+        )
+        await build_manager._execute_parallel_builds(tasks)
+        assert mock_exec.call_count == 3
+
+def test_build_order(build_manager):
+    build_manager.dependency_graph = {
+        "A": {"B", "C"},
+        "B": {"D"},
+        "C": {"D"},
+        "D": set()
     }
     
-    pyproject_path = temp_project / "pyproject.toml"
-    pyproject_path.write_text(tomli_w.dumps(original_config))
-    
-    manager = PyProjectManager(str(temp_project))
-    loaded_config = manager.load()
-    
-    assert loaded_config == original_config
-
-def test_build_system_config():
-    config = BuildSystemConfig(
-        requires=["setuptools>=42"],
-        build_backend="setuptools.build_meta",
-        backend_path=["custom_backend"]
-    )
-    
-    assert config.requires == ["setuptools>=42"]
-    assert config.build_backend == "setuptools.build_meta"
-    assert config.backend_path == ["custom_backend"]
-
-def test_validate_dependencies():
-    manager = PyProjectManager(".")
-    config = BuildSystemConfig(
-        requires=["definitely_not_a_real_package"],
-        build_backend="setuptools.build_meta"
-    )
-    manager.set_build_system(config)
-    
-    missing = manager.validate_dependencies()
-    assert "definitely_not_a_real_package" in missing
+    order = build_manager._get_build_order()
+    assert order.index("D") < order.index("B")
+    assert order.index("D") < order.index("C")
+    assert order.index("B") < order.index("A")
+    assert order.index("C") < order.index("A")
