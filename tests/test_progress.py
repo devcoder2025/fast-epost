@@ -1,51 +1,50 @@
-import unittest
-import io
-import sys
-from src.progress.progress_bar import ProgressBar, ProgressBarStyle, ColorScheme
-from src.progress.formatters import ProgressFormatter, format_bytes, format_time
+import pytest
+import time
+from unittest.mock import patch
+from io import StringIO
+from src.progress.progress_bar import EnhancedProgressBar
 
-class TestProgressBar(unittest.TestCase):
-    def setUp(self):
-        self.output = io.StringIO()
-        self.original_stdout = sys.stdout
-        sys.stdout = self.output
+@pytest.fixture
+def progress_bar():
+    return EnhancedProgressBar(total=100, description="Processing")
 
-    def tearDown(self):
-        sys.stdout = self.original_stdout
+def test_progress_initialization(progress_bar):
+    assert progress_bar.total == 100
+    assert progress_bar._stats.current == 0
+    assert not progress_bar._stats.is_paused
 
-    def test_progress_bar_initialization(self):
-        progress = ProgressBar(total=100)
-        self.assertEqual(progress.total, 100)
-        self.assertEqual(progress.n, 0)
+def test_progress_update():
+    with patch('sys.stdout', new=StringIO()) as fake_output:
+        bar = EnhancedProgressBar(total=10)
+        bar.update(5)
+        output = fake_output.getvalue()
+        assert "50%" in output
+        assert "5/10" in output
 
-    def test_progress_bar_update(self):
-        progress = ProgressBar(total=100)
-        progress.update(10)
-        self.assertEqual(progress.n, 10)
+def test_pause_resume():
+    bar = EnhancedProgressBar(total=100)
+    bar.update(10)
+    initial_rate = bar._stats.rate
+    
+    bar.pause()
+    assert bar._stats.is_paused
+    bar.update(10)  # Should not increase while paused
+    assert bar._stats.current == 10
+    
+    bar.resume()
+    assert not bar._stats.is_paused
+    bar.update(10)
+    assert bar._stats.current == 20
 
-    def test_color_schemes(self):
-        progress = ProgressBar(total=100, color_scheme=ColorScheme.SUCCESS)
-        progress.update(50)
-        output = self.output.getvalue()
-        self.assertIn(ColorScheme.SUCCESS.value, output)
+def test_memory_tracking():
+    bar = EnhancedProgressBar(total=100, show_memory=True)
+    bar.update(50)
+    assert bar._stats.memory_usage_mb > 0
 
-    def test_custom_style(self):
-        style = ProgressBarStyle(fill_char="#", empty_char="-")
-        progress = ProgressBar(total=100, style=style)
-        progress.update(50)
-        output = self.output.getvalue()
-        self.assertIn("#", output)
-        self.assertIn("-", output)
-
-class TestFormatters(unittest.TestCase):
-    def test_byte_formatter(self):
-        self.assertEqual(format_bytes(1024), "1.0 KB")
-        self.assertEqual(format_bytes(1024 * 1024), "1.0 MB")
-
-    def test_time_formatter(self):
-        self.assertEqual(format_time(65), "0:01:05")
-
-    def test_progress_formatter(self):
-        formatter = ProgressFormatter()
-        self.assertEqual(formatter.percentage(0.756), "75.6%")
-        self.assertEqual(formatter.fraction(75, 100), "75/100")
+def test_eta_calculation():
+    bar = EnhancedProgressBar(total=100)
+    start_time = time.time()
+    
+    with patch('time.time', side_effect=[start_time, start_time + 2]):
+        bar.update(20)
+        assert 8 <= bar._stats.eta_seconds <= 10  # Expected ~8 seconds at current rate
