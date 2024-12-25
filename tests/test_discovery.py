@@ -1,79 +1,134 @@
 
 import pytest
-from unittest.mock import Mock, patch
+
 import asyncio
 from src.discovery.registry import ServiceRegistry, ServiceInstance
-from src.discovery.client import ServiceDiscoveryClient
+
+from src.discovery.providers import ConsulServiceProvider
 
 @pytest.fixture
 def registry():
-    return ServiceRegistry(heartbeat_timeout=5)
 
-@pytest.fixture
-def client(registry):
-    return ServiceDiscoveryClient(registry)
+    return ServiceRegistry(heartbeat_interval=1, cleanup_interval=2)
+
+
+
+
 
 @pytest.mark.asyncio
 async def test_service_registration(registry):
-    instance_id = await registry.register_service(
+
+    instance = await registry.register(
         "test-service",
         "localhost",
-        8080
+
+        8080,
+        {"version": "1.0"}
     )
-    assert "test-service" in registry.services
-    assert instance_id in registry.services["test-service"]
+
+
+    
+    assert instance.name == "test-service"
+    assert instance.host == "localhost"
+    assert instance.port == 8080
+    assert instance.metadata == {"version": "1.0"}
+    
+    instances = registry.get_instances("test-service")
+    assert len(instances) == 1
+    assert instances[0].id == instance.id
 
 @pytest.mark.asyncio
 async def test_service_heartbeat(registry):
-    instance_id = await registry.register_service(
-        "test-service",
-        "localhost",
-        8080
-    )
-    assert await registry.heartbeat("test-service", instance_id)
 
-@pytest.mark.asyncio
-async def test_service_discovery(client):
-    await client.registry.register_service(
-        "test-service",
-        "localhost",
-        8080
-    )
+
+
+
+
+
+    instance = await registry.register("test-service", "localhost", 8080)
+    instance_id = instance.id
     
-    instance = await client.get_service_instance("test-service")
-    assert instance is not None
-    assert instance.host == "localhost"
-    assert instance.port == 8080
-
-@pytest.mark.asyncio
-async def test_service_health_check(registry):
-    with patch('aiohttp.ClientSession.get') as mock_get:
-        mock_response = Mock()
-        mock_response.status = 200
-        mock_get.return_value.__aenter__.return_value = mock_response
-        
-        instance_id = await registry.register_service(
-            "test-service",
-            "localhost",
-            8080
-        )
-        await registry._check_services_health()
-        
-        instance = registry.services["test-service"][instance_id]
-        assert instance.status == "UP"
-
-@pytest.mark.asyncio
-async def test_service_call(client):
-    await client.registry.register_service(
-        "test-service",
-        "localhost",
-        8080
-    )
+    # Verify heartbeat updates last_heartbeat
+    initial_heartbeat = instance.last_heartbeat
+    await asyncio.sleep(0.1)
+    await registry.heartbeat("test-service", instance_id)
     
-    with patch('aiohttp.ClientSession.request') as mock_request:
-        mock_response = Mock()
-        mock_response.json = asyncio.coroutine(lambda: {"status": "ok"})
-        mock_request.return_value.__aenter__.return_value = mock_response
-        
-        result = await client.call_service("test-service", "/test")
-        assert result["status"] == "ok"
+    updated_instance = registry.get_instances("test-service")[0]
+    assert updated_instance.last_heartbeat > initial_heartbeat
+
+@pytest.mark.asyncio
+
+
+
+
+
+
+async def test_service_cleanup(registry):
+    instance = await registry.register("test-service", "localhost", 8080)
+    
+
+
+
+
+    # Wait for cleanup
+    await registry.start()
+    await asyncio.sleep(3)
+    
+    # Service should be marked as down
+    instances = registry.get_instances("test-service")
+    assert instances[0].status == "down"
+    
+    await registry.stop()
+
+@pytest.mark.asyncio
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async def test_service_watchers(registry):
+    events = []
+    
+    async def watcher(event, instance):
+        events.append((event, instance.id))
+    
+    registry.watch("test-service", watcher)
+    
+    instance = await registry.register("test-service", "localhost", 8080)
+    await registry.deregister("test-service", instance.id)
+    
+    assert len(events) == 2
+    assert events[0][0] == "register"
+    assert events[1][0] == "deregister"
+
+@pytest.mark.asyncio
+
+
+
+
+
+
+async def test_multiple_instances(registry):
+    await registry.register("test-service", "host1", 8080)
+    await registry.register("test-service", "host2", 8080)
+    
+
+
+
+
+
+
+
+    instances = registry.get_instances("test-service")
+    assert len(instances) == 2
+    assert {i.host for i in instances} == {"host1", "host2"}
