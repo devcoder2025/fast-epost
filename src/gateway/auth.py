@@ -58,3 +58,26 @@ class AuthManager:
     def _generate_api_key(self) -> str:
         random_bytes = secrets.token_bytes(32)
         return hashlib.sha256(random_bytes).hexdigest()
+
+from fastapi import Request, HTTPException
+import jwt
+from typing import Optional
+
+class AuthMiddleware:
+    def __init__(self, secret_key: str):
+        self.secret_key = secret_key
+
+    async def authenticate(self, request: Request) -> Optional[dict]:
+        token = request.headers.get('Authorization')
+        if not token:
+            raise HTTPException(status_code=401, detail="No authorization token")
+
+        try:
+            payload = jwt.decode(
+                token.replace('Bearer ', ''),
+                self.secret_key,
+                algorithms=['HS256']
+            )
+            return payload
+        except jwt.InvalidTokenError:
+            raise HTTPException(status_code=401, detail="Invalid token")
