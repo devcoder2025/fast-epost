@@ -1,68 +1,101 @@
-
-from typing import Dict, Optional
+from typing import Optional, Callable
 import asyncio
-from .strategies import TokenBucket, SlidingWindow, FixedWindow, RateLimitResult
+from functools import wraps
+from .strategies import (
+    RateLimitStrategy,
+    FixedWindowStrategy,
+    RateLimitResult
+)
 
 class RateLimiter:
-    def __init__(self, strategy: str = 'token_bucket', **kwargs):
-        self.limiters: Dict[str, Dict[str, object]] = {}
-        self.strategy = strategy
-        self.strategy_kwargs = kwargs
-
-    def _create_limiter(self, strategy: str, **kwargs):
-        if strategy == 'token_bucket':
-            return TokenBucket(
-                rate=kwargs.get('rate', 10),
-                capacity=kwargs.get('capacity', 10)
-            )
-        elif strategy == 'sliding_window':
-            return SlidingWindow(
-                max_requests=kwargs.get('max_requests', 10),
-                window_size=kwargs.get('window_size', 60)
-            )
-        elif strategy == 'fixed_window':
-            return FixedWindow(
-                max_requests=kwargs.get('max_requests', 10),
-                window_size=kwargs.get('window_size', 60)
-            )
-        else:
-            raise ValueError(f"Unknown rate limiting strategy: {strategy}")
-
-    def get_limiter(self, key: str, namespace: str = 'default') -> object:
-        if namespace not in self.limiters:
-            self.limiters[namespace] = {}
-        
-        if key not in self.limiters[namespace]:
-            self.limiters[namespace][key] = self._create_limiter(
-                self.strategy,
-                **self.strategy_kwargs
-            )
-            
-        return self.limiters[namespace][key]
-
-    async def acquire(
+    def __init__(
         self,
-        key: str,
-        namespace: str = 'default'
+        strategy: Optional[RateLimitStrategy] = None,
+        limit: int = 100,
+        window: int = 60,
+        key_func: Optional[Callable] = None
+    ):
+        self.strategy = strategy or FixedWindowStrategy()
+        self.limit = limit
+        self.window = window
+        self.key_func = key_func or (lambda *args, **kwargs: "default")
+
+    async def check_rate_limit(
+        self,
+        key: str
     ) -> RateLimitResult:
-        limiter = self.get_limiter(key, namespace)
-        return await limiter.acquire()
+        return await self.strategy.check_rate_limit(
+            key,
+            self.limit,
+            self.window
+        )
 
-    async def is_allowed(
+    def rate_limit(
         self,
-        key: str,
-        namespace: str = 'default'
-    ) -> bool:
-        result = await self.acquire(key, namespace)
-        return result.allowed
+        limit: Optional[int] = None,
+        window: Optional[int] = None,
+        key_func: Optional[Callable] = None
+    ):
+        def decorator(func):
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                # Use provided values or fall back to instance defaults
+                current_limit = limit or self.limit
+                current_window = window or self.window
+                current_key_func = key_func or self.key_func
 
-    def get_limit_headers(self, result: RateLimitResult) -> Dict[str, str]:
-        return {
+                # Generate rate limit key
+                key = current_key_func(*args, **kwargs)
+
+                # Check rate limit
+                result = await self.strategy.check_rate_limit(
+                    key,
+                    current_limit,
+                    current_window
+                )
+
+                if not result.allowed:
+                    raise RateLimitExceeded(
+                        f"Rate limit exceeded. Try again in {result.reset_after:.1f} seconds"
+                    )
+
+                return await func(*args, **kwargs)
+            return wrapper
+        return decorator
+
+class RateLimitExceeded(Exception):
+    pass
+
+class RateLimitMiddleware:
+    def __init__(
+        self,
+        rate_limiter: RateLimiter,
+        key_func: Optional[Callable] = None
+    ):
+        self.rate_limiter = rate_limiter
+        self.key_func = key_func or (
+            lambda request: f"{request.remote_addr}:{request.path}"
+        )
+
+    async def __call__(self, request, call_next):
+        key = self.key_func(request)
+        result = await self.rate_limiter.check_rate_limit(key)
+
+        if not result.allowed:
+            headers = {
+                'X-RateLimit-Limit': str(result.limit),
+                'X-RateLimit-Remaining': str(result.remaining),
+                'X-RateLimit-Reset': str(int(result.reset_after)),
+            }
+            raise RateLimitExceeded(
+                f"Rate limit exceeded. Try again in {result.reset_after:.1f} seconds",
+                headers=headers
+            )
+
+        response = await call_next(request)
+        response.headers.update({
             'X-RateLimit-Limit': str(result.limit),
             'X-RateLimit-Remaining': str(result.remaining),
-            'X-RateLimit-Reset': str(int(result.reset_after))
-        }
-
-    async def clear(self, namespace: str = 'default'):
-        if namespace in self.limiters:
-            del self.limiters[namespace]
+            'X-RateLimit-Reset': str(int(result.reset_after)),
+        })
+        return response

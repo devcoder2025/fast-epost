@@ -1,80 +1,95 @@
-
 import pytest
 import asyncio
-from src.ratelimit.limiter import RateLimiter
-from src.ratelimit.strategies import TokenBucket, SlidingWindow, FixedWindow
+from src.ratelimit.limiter import RateLimiter, RateLimitExceeded
+from src.ratelimit.strategies import (
+    FixedWindowStrategy,
+    SlidingWindowStrategy,
+    RedisRateLimitStrategy
+)
 
 @pytest.fixture
 def rate_limiter():
     return RateLimiter(
-        strategy='token_bucket',
-        rate=10,
-        capacity=10
+        strategy=FixedWindowStrategy(),
+        limit=3,
+        window=1
     )
 
 @pytest.mark.asyncio
-async def test_token_bucket():
-    bucket = TokenBucket(rate=2, capacity=2)
+async def test_fixed_window_strategy():
+    limiter = RateLimiter(
+        strategy=FixedWindowStrategy(),
+        limit=2,
+        window=1
+    )
     
-    # First two requests should be allowed
-    result1 = await bucket.acquire()
-    result2 = await bucket.acquire()
-    assert result1.allowed and result2.allowed
+    # First two requests should succeed
+    result1 = await limiter.check_rate_limit("test")
+    assert result1.allowed is True
+    assert result1.remaining == 1
     
-    # Third request should be denied
-    result3 = await bucket.acquire()
-    assert not result3.allowed
+    result2 = await limiter.check_rate_limit("test")
+    assert result2.allowed is True
+    assert result2.remaining == 0
+    
+    # Third request should be blocked
+    result3 = await limiter.check_rate_limit("test")
+    assert result3.allowed is False
+    assert result3.remaining == 0
 
 @pytest.mark.asyncio
-async def test_sliding_window():
-    window = SlidingWindow(max_requests=2, window_size=1)
+async def test_sliding_window_strategy():
+    limiter = RateLimiter(
+        strategy=SlidingWindowStrategy(),
+        limit=2,
+        window=1
+    )
     
-    # First two requests should be allowed
-    result1 = await window.acquire()
-    result2 = await window.acquire()
-    assert result1.allowed and result2.allowed
+    result1 = await limiter.check_rate_limit("test")
+    assert result1.allowed is True
     
-    # Third request should be denied
-    result3 = await window.acquire()
-    assert not result3.allowed
+    result2 = await limiter.check_rate_limit("test")
+    assert result2.allowed is True
+    
+    result3 = await limiter.check_rate_limit("test")
+    assert result3.allowed is False
 
 @pytest.mark.asyncio
-async def test_fixed_window():
-    window = FixedWindow(max_requests=2, window_size=1)
+async def test_rate_limit_decorator(rate_limiter):
+    call_count = 0
     
-    # First two requests should be allowed
-    result1 = await window.acquire()
-    result2 = await window.acquire()
-    assert result1.allowed and result2.allowed
+    @rate_limiter.rate_limit()
+    async def test_func():
+        nonlocal call_count
+        call_count += 1
+        return "success"
     
-    # Third request should be denied
-    result3 = await window.acquire()
-    assert not result3.allowed
+    # First three calls should succeed
+    await test_func()
+    await test_func()
+    await test_func()
+    
+    # Fourth call should raise RateLimitExceeded
+    with pytest.raises(RateLimitExceeded):
+        await test_func()
+    
+    assert call_count == 3
 
 @pytest.mark.asyncio
-async def test_rate_limiter_acquire(rate_limiter):
-    # Test multiple requests
-    results = []
-    for _ in range(12):
-        result = await rate_limiter.acquire('test_key')
-        results.append(result.allowed)
+async def test_custom_key_function(rate_limiter):
+    def custom_key(*args, **kwargs):
+        return f"user:{kwargs.get('user_id')}"
     
-    # First 10 requests should be allowed, last 2 denied
-    assert sum(results) == 10
-
-@pytest.mark.asyncio
-async def test_rate_limiter_namespaces(rate_limiter):
-    # Test requests in different namespaces
-    result1 = await rate_limiter.acquire('key', 'namespace1')
-    result2 = await rate_limiter.acquire('key', 'namespace2')
+    @rate_limiter.rate_limit(key_func=custom_key)
+    async def test_func(user_id):
+        return "success"
     
-    assert result1.allowed and result2.allowed
-
-@pytest.mark.asyncio
-async def test_rate_limiter_headers(rate_limiter):
-    result = await rate_limiter.acquire('test_key')
-    headers = rate_limiter.get_limit_headers(result)
+    # Different users should have separate limits
+    await test_func(user_id="user1")
+    await test_func(user_id="user2")
+    await test_func(user_id="user1")
+    await test_func(user_id="user2")
     
-    assert 'X-RateLimit-Limit' in headers
-    assert 'X-RateLimit-Remaining' in headers
-    assert 'X-RateLimit-Reset' in headers
+    # Third request for same user should fail
+    with pytest.raises(RateLimitExceeded):
+        await test_func(user_id="user1")
