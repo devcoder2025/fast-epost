@@ -1,38 +1,26 @@
-
-from typing import Optional, List
+from typing import Callable, Dict
 import asyncio
-from .task_queue import TaskQueue, Task
+from .core import MessageQueue, QueuePriority
 
 class Worker:
-    def __init__(
-        self,
-        queue: TaskQueue,
-        max_concurrent_tasks: int = 5
-    ):
+    def __init__(self, queue: MessageQueue):
         self.queue = queue
-        self.max_concurrent_tasks = max_concurrent_tasks
-        self.active_tasks: List[asyncio.Task] = []
+        self.handlers: Dict[str, Callable] = {}
         self._running = False
+
+    async def register_handler(self, queue_name: str, handler: Callable):
+        self.handlers[queue_name] = handler
+        await self.queue.subscribe(queue_name, handler)
 
     async def start(self):
         self._running = True
+        await self.queue.connect()
         while self._running:
-            if len(self.active_tasks) < self.max_concurrent_tasks:
-                task = asyncio.create_task(self.queue.start())
-                self.active_tasks.append(task)
-            
-            # Clean up completed tasks
-            self.active_tasks = [t for t in self.active_tasks if not t.done()]
             await asyncio.sleep(0.1)
 
     async def stop(self):
         self._running = False
-        await self.queue.stop()
-        
-        if self.active_tasks:
-            for task in self.active_tasks:
-                task.cancel()
-            await asyncio.gather(*self.active_tasks, return_exceptions=True)
+        await self.queue.close()
 
     async def get_stats(self) -> dict:
         tasks = self.queue.results.values()
@@ -42,5 +30,5 @@ class Worker:
             'processing': sum(1 for t in tasks if t.status == 'processing'),
             'completed': sum(1 for t in tasks if t.status == 'completed'),
             'failed': sum(1 for t in tasks if t.status == 'failed'),
-            'active_workers': len(self.active_tasks)
+            'active_workers': len(self.handlers)
         }
