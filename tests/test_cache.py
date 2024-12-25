@@ -1,46 +1,58 @@
 import pytest
-import time
-from src.cache.cache import MemoryCache, EnhancedCache
+import asyncio
+from src.cache.manager import CacheManager
+from src.cache.backends import MemoryCache, RedisCache
 
-def test_memory_cache_basic():
-    cache = MemoryCache(max_size=2)
-    cache.set('key1', 'value1')
-    cache.set('key2', 'value2')
-    
-    assert cache.get('key1') == 'value1'
-    assert cache.get('key2') == 'value2'
+@pytest.fixture
+async def cache_manager():
+    manager = CacheManager(backend='memory')
+    await manager.start()
+    yield manager
+    await manager.stop()
 
-def test_memory_cache_eviction():
-    cache = MemoryCache(max_size=2)
-    cache.set('key1', 'value1')
-    cache.set('key2', 'value2')
-    cache.set('key3', 'value3')
-    
-    assert cache.get('key1') is None
-    assert cache.get('key2') == 'value2'
-    assert cache.get('key3') == 'value3'
+@pytest.mark.asyncio
+async def test_cache_set_get(cache_manager):
+    await cache_manager.set('test_key', 'test_value')
+    value = await cache_manager.get('test_key')
+    assert value == 'test_value'
 
-def test_memory_cache_ttl():
-    cache = MemoryCache(max_size=2, ttl=1)
-    cache.set('key1', 'value1')
-    
-    assert cache.get('key1') == 'value1'
-    time.sleep(1.1)
-    assert cache.get('key1') is None
-
-def test_enhanced_cache_compression():
-    cache = EnhancedCache('/tmp/cache')
-    large_value = 'x' * 2000
-    cache.set('large_key', large_value)
-    
-    assert cache.get('large_key') == large_value
-
-def test_cache_stats():
+@pytest.mark.asyncio
+async def test_cache_ttl():
     cache = MemoryCache()
-    cache.set('key1', 'value1')
+    await cache.start()
+    await cache.set('test_key', 'test_value', ttl=1)
+    assert await cache.get('test_key') == 'test_value'
+    await asyncio.sleep(1.1)
+    assert await cache.get('test_key') is None
+    await cache.stop()
+
+@pytest.mark.asyncio
+async def test_cache_delete(cache_manager):
+    await cache_manager.set('test_key', 'test_value')
+    await cache_manager.delete('test_key')
+    assert await cache_manager.get('test_key') is None
+
+@pytest.mark.asyncio
+async def test_cache_clear(cache_manager):
+    await cache_manager.set('key1', 'value1')
+    await cache_manager.set('key2', 'value2')
+    await cache_manager.clear()
+    assert await cache_manager.get('key1') is None
+    assert await cache_manager.get('key2') is None
+
+@pytest.mark.asyncio
+async def test_cache_increment(cache_manager):
+    await cache_manager.set('counter', 0)
+    value = await cache_manager.increment('counter')
+    assert value == 1
+    value = await cache_manager.increment('counter', 2)
+    assert value == 3
+
+@pytest.mark.asyncio
+async def test_cache_get_or_set(cache_manager):
+    async def default_value():
+        return "computed_value"
     
-    cache.get('key1')  # Hit
-    cache.get('key2')  # Miss
-    
-    assert cache._stats['hits'] == 1
-    assert cache._stats['misses'] == 1
+    value = await cache_manager.get_or_set('missing_key', default_value)
+    assert value == "computed_value"
+    assert await cache_manager.get('missing_key') == "computed_value"
