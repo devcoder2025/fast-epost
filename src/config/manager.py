@@ -1,76 +1,102 @@
-
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional, List
 import asyncio
-import yaml
 import json
+import yaml
 from pathlib import Path
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from .store import ConfigStore
+from dataclasses import dataclass
+import logging
+
+@dataclass
+class ConfigValue:
+    key: str
+    value: Any
+    source: str
+    version: Optional[int] = None
+    last_updated: Optional[float] = None
 
 class ConfigManager:
-    def __init__(self, config_dir: str):
-        self.config_dir = Path(config_dir)
-        self.store = ConfigStore()
-        self.observer = Observer()
-        self._setup_watchers()
+    def __init__(self):
+        self.providers = []
+        self.watchers = {}
+        self.cache: Dict[str, ConfigValue] = {}
+        self.logger = logging.getLogger(__name__)
+        self._running = False
+        self.refresh_interval = 30
 
-    def _setup_watchers(self):
-        event_handler = ConfigFileHandler(self)
-        self.observer.schedule(
-            event_handler,
-            str(self.config_dir),
-            recursive=False
+    def add_provider(self, provider):
+        self.providers.append(provider)
+
+    def watch(self, key: str, callback):
+        if key not in self.watchers:
+            self.watchers[key] = set()
+        self.watchers[key].add(callback)
+
+    def unwatch(self, key: str, callback):
+        if key in self.watchers:
+            self.watchers[key].discard(callback)
+            if not self.watchers[key]:
+                del self.watchers[key]
+
+    async def get(self, key: str, default: Any = None) -> Any:
+        if key in self.cache:
+            return self.cache[key].value
+
+        for provider in reversed(self.providers):
+            try:
+                value = await provider.get(key)
+                if value is not None:
+                    self.cache[key] = ConfigValue(
+                        key=key,
+                        value=value,
+                        source=provider.name
+                    )
+                    return value
+            except Exception as e:
+                self.logger.error(f"Error getting config from {provider.name}: {e}")
+
+        return default
+
+    async def set(self, key: str, value: Any):
+        if not self.providers:
+            raise ValueError("No config providers available")
+
+        provider = self.providers[-1]
+        await provider.set(key, value)
+        
+        old_value = self.cache.get(key)
+        self.cache[key] = ConfigValue(
+            key=key,
+            value=value,
+            source=provider.name
         )
 
-    def start(self):
-        self._load_all_configs()
-        self.observer.start()
+        if key in self.watchers:
+            await self._notify_watchers(key, value, old_value)
 
-    def stop(self):
-        self.observer.stop()
-        self.observer.join()
+    async def _notify_watchers(self, key: str, new_value: Any, old_value: Optional[ConfigValue]):
+        if key in self.watchers:
+            for callback in self.watchers[key]:
+                try:
+                    await callback(key, new_value, old_value.value if old_value else None)
+                except Exception as e:
+                    self.logger.error(f"Error notifying config watcher: {e}")
 
-    def _load_all_configs(self):
-        for config_file in self.config_dir.glob("*.{yaml,yml,json}"):
-            self._load_config_file(config_file)
+    async def start(self):
+        self._running = True
+        asyncio.create_task(self._refresh_loop())
 
-    def _load_config_file(self, file_path: Path):
-        try:
-            with open(file_path, 'r') as f:
-                if file_path.suffix in ('.yaml', '.yml'):
-                    config = yaml.safe_load(f)
-                else:
-                    config = json.load(f)
-                
-                namespace = file_path.stem
-                self.store.set_namespace(namespace, config)
-                
-        except Exception as e:
-            print(f"Error loading config file {file_path}: {e}")
+    async def stop(self):
+        self._running = False
 
-    def get_config(self, namespace: str, key: str) -> Any:
-        return self.store.get(namespace, key)
+    async def _refresh_loop(self):
+        while self._running:
+            await self._refresh_configs()
+            await asyncio.sleep(self.refresh_interval)
 
-    def set_config(self, namespace: str, key: str, value: Any):
-        self.store.set(namespace, key, value)
-        self._save_config(namespace)
-
-    def _save_config(self, namespace: str):
-        config = self.store.get_namespace(namespace)
-        if not config:
-            return
-
-        file_path = self.config_dir / f"{namespace}.yaml"
-        with open(file_path, 'w') as f:
-            yaml.safe_dump(config, f)
-
-class ConfigFileHandler(FileSystemEventHandler):
-    def __init__(self, config_manager: ConfigManager):
-        self.config_manager = config_manager
-
-    def on_modified(self, event):
-        if not event.is_directory:
-            file_path = Path(event.src_path)
-            if file_path.suffix in ('.yaml', '.yml', '.json'):
-                self.config_manager._load_config_file(file_path)
+    async def _refresh_configs(self):
+        for key in list(self.cache.keys()):
+            old_value = self.cache[key]
+            new_value = await self.get(key)
+            
+            if new_value != old_value.value:
+                await self._notify_watchers(key, new_value, old_value)

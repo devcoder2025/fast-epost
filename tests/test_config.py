@@ -1,72 +1,89 @@
-
 import pytest
+import asyncio
 import tempfile
-from pathlib import Path
+import json
 import yaml
-import time
+from pathlib import Path
 from src.config.manager import ConfigManager
-from src.config.store import ConfigStore
+from src.config.providers import FileConfigProvider, ConsulConfigProvider
 
 @pytest.fixture
-def config_dir():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield tmpdir
+def config_manager():
+    return ConfigManager()
 
 @pytest.fixture
-def config_manager(config_dir):
-    manager = ConfigManager(config_dir)
-    manager.start()
-    yield manager
-    manager.stop()
+def temp_config_file():
+    with tempfile.NamedTemporaryFile(suffix='.yaml') as tmp:
+        yield tmp.name
 
-@pytest.fixture
-def config_store():
-    return ConfigStore()
-
-def test_config_loading(config_dir, config_manager):
-    config_path = Path(config_dir) / "test.yaml"
-    config_data = {
-        "database": {
-            "host": "localhost",
-            "port": 5432
+@pytest.mark.asyncio
+async def test_file_config_provider(temp_config_file):
+    initial_config = {
+        'database': {
+            'host': 'localhost',
+            'port': 5432
         }
     }
     
-    with open(config_path, 'w') as f:
-        yaml.safe_dump(config_data, f)
+    with open(temp_config_file, 'w') as f:
+        yaml.dump(initial_config, f)
     
-    time.sleep(1)  # Wait for file watcher
-    assert config_manager.get_config("test", "database.host") == "localhost"
-    assert config_manager.get_config("test", "database.port") == 5432
-
-def test_config_store():
-    store = ConfigStore()
-    store.set_namespace("app", {
-        "server": {
-            "host": "localhost",
-            "port": 8080
-        }
-    })
+    provider = FileConfigProvider(temp_config_file)
+    manager = ConfigManager()
+    manager.add_provider(provider)
     
-    assert store.get("app", "server.host") == "localhost"
-    assert store.get("app", "server.port") == 8080
+    value = await manager.get('database.host')
+    assert value == 'localhost'
 
-def test_config_update(config_dir, config_manager):
-    config_manager.set_config("app", "server.port", 9000)
-    assert config_manager.get_config("app", "server.port") == 9000
+@pytest.mark.asyncio
+async def test_config_watchers(config_manager, temp_config_file):
+    provider = FileConfigProvider(temp_config_file)
+    config_manager.add_provider(provider)
     
-    config_path = Path(config_dir) / "app.yaml"
-    assert config_path.exists()
+    changes = []
+    async def watcher(key, new_value, old_value):
+        changes.append((key, new_value, old_value))
     
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-        assert config["server"]["port"] == 9000
+    config_manager.watch('test.key', watcher)
+    await config_manager.set('test.key', 'value1')
+    await config_manager.set('test.key', 'value2')
+    
+    assert len(changes) == 2
+    assert changes[0] == ('test.key', 'value1', None)
+    assert changes[1] == ('test.key', 'value2', 'value1')
 
-def test_nested_config(config_store):
-    config_store.set("app", "database.credentials.username", "admin")
-    assert config_store.get("app", "database.credentials.username") == "admin"
+@pytest.mark.asyncio
+async def test_multiple_providers(config_manager):
+    file_provider = FileConfigProvider('config1.yaml')
+    consul_provider = ConsulConfigProvider()
+    
+    config_manager.add_provider(file_provider)
+    config_manager.add_provider(consul_provider)
+    
+    # Provider order should be respected
+    providers = config_manager.providers
+    assert len(providers) == 2
+    assert isinstance(providers[0], FileConfigProvider)
+    assert isinstance(providers[1], ConsulConfigProvider)
 
-def test_config_deletion(config_store):
-    config_store.set_namespace("test", {"key": "value"})
-    config_store.delete_namespace("test")
-    assert config_store.get_namespace("test") is None
+@pytest.mark.asyncio
+async def test_config_refresh(config_manager, temp_config_file):
+    provider = FileConfigProvider(temp_config_file)
+    config_manager.add_provider(provider)
+    config_manager.refresh_interval = 0.1
+    
+    await config_manager.set('test.key', 'initial')
+    initial_value = await config_manager.get('test.key')
+    assert initial_value == 'initial'
+    
+    # Simulate external config change
+    with open(temp_config_file, 'w') as f:
+        yaml.dump({'test': {'key': 'updated'}}, f)
+    
+    await config_manager.start()
+    await asyncio.sleep(0.2)
+    
+    updated_value = await config_manager.get('test.key')
+    assert updated_value == 'updated'
+    
+    await config_manager.stop()
