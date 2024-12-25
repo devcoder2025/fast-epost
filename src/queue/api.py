@@ -15,3 +15,7 @@ async def publish_message(queue_name: str, message: dict, priority: str = "MEDIU
         return {"status": "success", "message": "Message published"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/queue/metrics")
+async def get_metrics():
+    return message_queue.metrics.get_metrics()

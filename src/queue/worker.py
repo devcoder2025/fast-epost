@@ -3,8 +3,9 @@ import asyncio
 from .core import MessageQueue, QueuePriority
 
 class Worker:
-    def __init__(self, queue: MessageQueue):
+    def __init__(self, queue: MessageQueue, max_retries: int = 3):
         self.queue = queue
+        self.max_retries = max_retries
         self.handlers: Dict[str, Callable] = {}
         self._running = False
 
@@ -32,3 +33,27 @@ class Worker:
             'failed': sum(1 for t in tasks if t.status == 'failed'),
             'active_workers': len(self.handlers)
         }
+
+    async def process_message(self, queue_name: str, message: aio_pika.IncomingMessage):
+        async with message.process():
+            retry_count = message.headers.get('x-retry-count', 0)
+            try:
+                body = json.loads(message.body.decode())
+                await self.handlers[queue_name](body['data'])
+                self.queue.metrics.increment_processed()
+            except Exception as e:
+                if retry_count < self.max_retries:
+                    await self._retry_message(message, retry_count + 1)
+                else:
+                    await self._move_to_dlq(message)
+                self.queue.metrics.increment_failed()
+
+    async def _retry_message(self, message: aio_pika.IncomingMessage, retry_count: int):
+        await asyncio.sleep(self.queue.dlq.retry_intervals[retry_count - 1])
+        await self.queue.channel.default_exchange.publish(
+            aio_pika.Message(
+                body=message.body,
+                headers={'x-retry-count': retry_count}
+            ),
+            routing_key=message.routing_key
+        )
