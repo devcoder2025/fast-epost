@@ -18,4 +18,3 @@
 
 Let me know if you need help with a specific part of the code or if you have any questions!# fast-epost
 full delivery system
-![Project Logo](./WhatsApp%20Image%202024-12-07%20at%2022.52.38.png)
