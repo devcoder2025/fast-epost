@@ -1,10 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Chart } from 'chart.js/auto';
 
 function Dashboard() {
+  const chartRef = useRef(null);
+
   useEffect(() => {
+    // Destroy existing chart if it exists
+    if (chartRef.current) {
+      chartRef.current.destroy();
+    }
+
+    // Create new chart
     const ctx = document.getElementById('shipmentChart').getContext('2d');
-    new Chart(ctx, {
+    chartRef.current = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -21,6 +29,13 @@ function Dashboard() {
         scales: { y: { beginAtZero: true } }
       }
     });
+
+    // Cleanup function
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+    };
   }, []);
 
   return (
@@ -29,9 +44,6 @@ function Dashboard() {
       <div className="row">
         <div className="col-md-8">
           <canvas id="shipmentChart"></canvas>
-        </div>
-        <div className="col-md-4">
-          {/* Add additional widgets/stats here */}
         </div>
       </div>
     </div>

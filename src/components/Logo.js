@@ -1,11 +1,9 @@
 import React from 'react';
 
+import logo from '../assets/logo.png'; // Ensure the logo image is in the assets folder
+
 const Logo = () => (
-  <svg width="150" height="40" viewBox="0 0 150 40">
-    <text x="10" y="30" fill="#3498db" fontSize="30" fontWeight="bold">
-      ePost
-    </text>
-  </svg>
+  <img src={logo} alt="Fast ePost Logo" style={{ width: '150px', height: 'auto' }} />
 );
 
 export default Logo;
