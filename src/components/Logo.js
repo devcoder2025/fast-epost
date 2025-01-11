@@ -1,9 +1,16 @@
 import React from 'react';
 
-import logo from '../assets/logo.png'; // Ensure the logo image is in the assets folder
-
 const Logo = () => (
-  <img src={logo} alt="Fast ePost Logo" style={{ width: '150px', height: 'auto' }} />
+  <img 
+    src="/logo_test.png" 
+    alt="Fast ePost Logo" 
+    className="logo" 
+    style={{ width: '150px', height: 'auto', transition: 'transform 0.3s' }} 
+    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'} 
+    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'} 
+  />
+);
+
 );
 
 export default Logo;
