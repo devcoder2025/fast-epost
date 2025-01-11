@@ -28,3 +28,8 @@ function Navbar() {
 }
 
 export default Navbar;
+
+import Logo from './Logo';
+
+// In the navbar JSX, replace the img with:
+<Logo />
