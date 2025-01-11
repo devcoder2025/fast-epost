@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
 
-function Navbar() {
+function Navbar({ onToggleTheme }) {
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <div className="container-fluid">
@@ -18,12 +18,18 @@ function Navbar() {
               <Link className="nav-link" to="/">Dashboard</Link>
             </li>
             <li className="nav-item">
+              <Link className="nav-link" to="/profile">Profile</Link>
+            </li>
+            <li className="nav-item">
               <Link className="nav-link" to="/shipments">Shipments</Link>
             </li>
             <li className="nav-item">
               <Link className="nav-link" to="/settings">Settings</Link>
             </li>
           </ul>
+          <button id="toggle-theme" className="btn btn-outline-secondary" onClick={onToggleTheme}>
+            Dark Mode
+          </button>
         </div>
       </div>
     </nav>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Profile from './components/Profile';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
@@ -9,6 +10,7 @@ import './styles/styles.css';
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     setTimeout(() => {
@@ -16,19 +18,26 @@ function App() {
     }, 2000);
   }, []);
 
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    document.body.classList.toggle('dark-mode');
+    document.querySelector('nav').classList.toggle('navbar-dark-mode');
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
 
   return (
     <Router>
-      <div className="app">
-        <Navbar />
+      <div className={`app ${darkMode ? 'dark-mode' : ''}`}>
+        <Navbar onToggleTheme={toggleDarkMode} />
         <div className="container mt-4">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/shipments" element={<Shipments />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </div>
       </div>
