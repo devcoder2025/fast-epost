@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Profile from './components/Profile';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import UserProfile from './components/UserProfile';
+import SupportSection from './components/SupportSection';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import Shipments from './components/Shipments';
@@ -37,7 +38,8 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/shipments" element={<Shipments />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile" element={<UserProfile />} />
+            <Route path="/support" element={<SupportSection />} />
           </Routes>
         </div>
       </div>
