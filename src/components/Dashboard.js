@@ -1,19 +1,26 @@
 import React, { useEffect, useRef } from 'react';
-import { Chart } from 'chart.js/auto';
+import Chart from 'chart.js/auto';
 
 function Dashboard() {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
 
   useEffect(() => {
+    // Only create chart if ref is available
+    if (!chartRef.current) return;
+
+    const ctx = chartRef.current.getContext('2d');
+    if (!ctx) return;
+
     // Destroy existing chart if it exists
     if (chartInstance.current) {
       chartInstance.current.destroy();
+      chartInstance.current = null;
     }
 
     // Create new chart
-    const ctx = chartRef.current.getContext('2d');
     chartInstance.current = new Chart(ctx, {
+
       type: 'bar',
       data: {
         labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -35,8 +42,18 @@ function Dashboard() {
     return () => {
       if (chartInstance.current) {
         chartInstance.current.destroy();
+        chartInstance.current = null;
       }
     };
+  }, []);
+
+  // Ensure chart container has proper dimensions
+  useEffect(() => {
+    const container = document.querySelector('.chart-container');
+    if (container) {
+      container.style.width = '100%';
+      container.style.height = '400px';
+    }
   }, []);
 
   return (
