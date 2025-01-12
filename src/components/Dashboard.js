@@ -3,16 +3,17 @@ import { Chart } from 'chart.js/auto';
 
 function Dashboard() {
   const chartRef = useRef(null);
+  const chartInstance = useRef(null);
 
   useEffect(() => {
     // Destroy existing chart if it exists
-    if (chartRef.current) {
-      chartRef.current.destroy();
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
     }
 
     // Create new chart
-    const ctx = document.getElementById('shipmentChart').getContext('2d');
-    chartRef.current = new Chart(ctx, {
+    const ctx = chartRef.current.getContext('2d');
+    chartInstance.current = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -32,8 +33,8 @@ function Dashboard() {
 
     // Cleanup function
     return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy();
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
       }
     };
   }, []);
@@ -41,10 +42,8 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <h2>Dashboard</h2>
-      <div className="row">
-        <div className="col-md-8">
-          <canvas id="shipmentChart"></canvas>
-        </div>
+      <div className="chart-container">
+        <canvas ref={chartRef} id="shipmentChart"></canvas>
       </div>
     </div>
   );
