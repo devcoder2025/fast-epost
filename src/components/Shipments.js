@@ -21,7 +21,12 @@ function Shipments() {
   }, []);
 
   return (
-    <div style={{ height: 400, width: '100%' }}>
+    <div style={{ 
+      height: '60vh', 
+      width: '100%',
+      padding: '0 15px',
+      overflow: 'auto'
+    }}>
       <h2>Shipments</h2>
       <DataGrid
         rows={shipments}
@@ -30,6 +35,17 @@ function Shipments() {
         rowsPerPageOptions={[5]}
         checkboxSelection
         disableSelectionOnClick
+        autoHeight
+        sx={{
+          '& .MuiDataGrid-cell': {
+            fontSize: '0.875rem',
+          },
+          '@media (max-width: 768px)': {
+            '& .MuiDataGrid-cell': {
+              fontSize: '0.75rem',
+            },
+          }
+        }}
       />
     </div>
   );

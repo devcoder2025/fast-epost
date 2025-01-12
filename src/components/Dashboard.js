@@ -59,7 +59,7 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <h2>Dashboard</h2>
-      <div className="chart-container">
+      <div className="chart-container" style={{ position: 'relative', height: '40vh', width: '80vw' }}>
         <canvas ref={chartRef} id="shipmentChart"></canvas>
       </div>
     </div>
