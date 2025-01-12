@@ -29,7 +29,7 @@ function App() {
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen onLoadingComplete={() => setLoading(false)} />;
   }
 
   if (showAuth) {

@@ -1,32 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import Logo from './Logo';
+import '../styles/styles.css';
 
-function LoadingScreen() {
-  const [progress, setProgress] = useState(0);
+function LoadingScreen({ onLoadingComplete }) {
+  const [loadingComplete, setLoadingComplete] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((prevProgress) => {
-        if (prevProgress >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prevProgress + 1;
-      });
-    }, 20);
+    const timer = setTimeout(() => {
+      setLoadingComplete(true);
+      onLoadingComplete();
+    }, 3000); // 3 seconds loading time
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearTimeout(timer);
+  }, [onLoadingComplete]);
 
   return (
     <div className="loading-screen">
-      <Logo className="loading-logo" />
-      <div className="loading-bar-container">
-        <div className="loading-bar" style={{ width: `${progress}%` }}></div>
-      </div>
-      <div className="loading-text">{progress}%</div>
+      <div className={`loading-logo ${loadingComplete ? 'logo-move-up' : ''}`} />
+      {!loadingComplete && (
+        <div className="loading-bar-container">
+          <div className="loading-bar" style={{ width: '100%' }} />
+        </div>
+      )}
     </div>
   );
 }
+
 
 export default LoadingScreen;
