@@ -17,7 +17,7 @@
 .loading-logo {
   width: 150px;
   height: 150px;
-  background: url('../public/logo_test.png') 0 0 no-repeat;
+  background: url('../assets/logo_test.png') 0 0 no-repeat;
   background-size: cover;
   animation: run 1s steps(8) infinite;
   margin-bottom: 20px;
