@@ -33,14 +33,16 @@ function App() {
     <Router>
       <div className={`app ${darkMode ? 'dark-mode' : ''}`}>
         <Navbar onToggleTheme={toggleDarkMode} />
-        <div className="container mt-4">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/shipments" element={<Shipments />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<UserProfile />} />
-            <Route path="/support" element={<SupportSection />} />
-          </Routes>
+        <div className="main-layout">
+          <div className="content-container">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/shipments" element={<Shipments />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/support" element={<SupportSection />} />
+            </Routes>
+          </div>
         </div>
       </div>
     </Router>
