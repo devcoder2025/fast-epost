@@ -7,12 +7,13 @@ function Dashboard() {
   const chartRef = useRef(null);
   const [shipmentData, setShipmentData] = useState([]);
   const chartInstance = useRef(null);
+  const userId = '123'; // Replace with the actual user ID
 
   useEffect(() => {
     // Fetch shipment data
     const fetchShipmentData = async () => {
       try {
-        const data = await fetchData('shipments'); // Call the fetchData function with the endpoint
+        const data = await fetchData(`shipments?userId=${userId}`); // Call the fetchData function with the endpoint
         setShipmentData(data);
       } catch (error) {
         console.error('Error fetching shipment data:', error);
@@ -20,7 +21,7 @@ function Dashboard() {
     };
 
     fetchShipmentData();
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     // Only create chart if ref is available
@@ -74,7 +75,7 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
-      <h2>Dashboard</h2>
+      <h2>Dashboard for User {userId}</h2>
       <div className="chart-container" style={{ position: 'relative', height: '40vh', width: '80vw' }}>
         <canvas ref={chartRef} id="shipmentChart"></canvas>
       </div>
