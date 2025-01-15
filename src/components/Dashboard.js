@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { fetchData } from '../fastEpostService'; // Import the fetchData function
+import Shipments from './Shipments'; // Import the Shipments component
 
 function Dashboard() {
   const chartRef = useRef(null);
@@ -77,6 +78,7 @@ function Dashboard() {
       <div className="chart-container" style={{ position: 'relative', height: '40vh', width: '80vw' }}>
         <canvas ref={chartRef} id="shipmentChart"></canvas>
       </div>
+      <Shipments /> {/* Include the Shipments component */}
     </div>
   );
 }
