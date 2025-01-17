@@ -4,6 +4,7 @@ from app.models import db
 from app.models.package import Package
 from app.schemas import PackageSchema
 from app.utils.validators import validate_request
+import logging
 
 bp = Blueprint('packages', __name__)
 
@@ -14,20 +15,25 @@ def add_package():
     data = request.get_json()
     user_id = get_jwt_identity()
     
-    package = Package(
-        description=data['description'],
-        location=data['location'],
-        user_id=user_id,
-        status='in_warehouse'
-    )
-    
-    db.session.add(package)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Package added successfully',
-        'package_id': package.id
-    }), 201
+    try:
+        package = Package(
+            description=data['description'],
+            location=data['location'],
+            user_id=user_id,
+            status='in_warehouse'
+        )
+        
+        db.session.add(package)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Package added successfully',
+            'package_id': package.id
+        }), 201
+    except Exception as e:
+        logging.error(f"Error adding package: {e}")
+        return jsonify({'message': 'Error adding package'}), 500
+
 @bp.route('/packages', methods=['GET'])
 @jwt_required()
 def get_packages():
@@ -50,16 +56,20 @@ def update_status(package_id):
     data = request.get_json()
     package = Package.query.get_or_404(package_id)
     
-    package.status = data['status']
-    package.location = data.get('location', package.location)
-    
-    history = PackageHistory(
-        status=data['status'],
-        location=data.get('location'),
-        notes=data.get('notes')
-    )
-    package.history.append(history)
-    
-    db.session.commit()
-    
-    return jsonify({'message': 'Package status updated successfully'})
+    try:
+        package.status = data['status']
+        package.location = data.get('location', package.location)
+        
+        history = PackageHistory(
+            status=data['status'],
+            location=data.get('location'),
+            notes=data.get('notes')
+        )
+        package.history.append(history)
+        
+        db.session.commit()
+        
+        return jsonify({'message': 'Package status updated successfully'})
+    except Exception as e:
+        logging.error(f"Error updating package status: {e}")
+        return jsonify({'message': 'Error updating package status'}), 500
