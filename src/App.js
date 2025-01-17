@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AuthPage from './components/AuthPage';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import UserProfile from './components/UserProfile';
 import SupportSection from './components/SupportSection';
@@ -7,7 +8,6 @@ import Dashboard from './components/Dashboard';
 import Shipments from './components/Shipments';
 import Settings from './components/Settings';
 import LoadingScreen from './components/LoadingScreen';
-import Logo from './components/Logo';
 import './styles/styles.css';
 
 function App() {
@@ -34,14 +34,7 @@ function App() {
 
   if (showAuth) {
     return (
-      <div className="auth-container">
-        <div className="background-logo">
-          <Logo />
-        </div>
-        <div className="auth-content">
-          {/* Login/Register components will go here */}
-        </div>
-      </div>
+        <AuthPage />
     );
   }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
+import axios from 'axios';
 
 const columns = [
   { field: 'id', headerName: 'ID', width: 90 },
@@ -14,10 +15,16 @@ function Shipments() {
 
   useEffect(() => {
     // Fetch shipments data
-    setShipments([
-      { id: 1, origin: 'New York', destination: 'London', status: 'In Transit', date: '2024-01-11' },
-      // Add more sample data
-    ]);
+    const fetchShipmentsData = async () => {
+      try {
+        const response = await axios.get('/api/shipments'); // Adjust the API endpoint as needed
+        setShipments(response.data);
+      } catch (error) {
+        console.error('Error fetching shipment data:', error);
+      }
+    };
+
+    fetchShipmentsData();
   }, []);
 
   return (

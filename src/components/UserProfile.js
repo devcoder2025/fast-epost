@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 
 function UserProfile() {
   const [role, setRole] = useState('customer-service');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission
+    const userProfileData = {
+      role,
+      email,
+      password,
+    };
+    try {
+      const response = await axios.post('/api/user/profile', userProfileData); // Adjust the API endpoint as needed
+      console.log('Profile updated successfully:', response.data);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    }
   };
 
   return (

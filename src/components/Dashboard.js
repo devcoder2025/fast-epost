@@ -1,9 +1,25 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
+import { fetchData } from '../fastEpostService'; // Import the fetchData function
 
 function Dashboard() {
   const chartRef = useRef(null);
+  const [shipmentData, setShipmentData] = useState([]);
   const chartInstance = useRef(null);
+
+  useEffect(() => {
+    // Fetch shipment data
+    const fetchShipmentData = async () => {
+      try {
+        const data = await fetchData('shipments'); // Call the fetchData function with the endpoint
+        setShipmentData(data);
+      } catch (error) {
+        console.error('Error fetching shipment data:', error);
+      }
+    };
+
+    fetchShipmentData();
+  }, []);
 
   useEffect(() => {
     // Only create chart if ref is available
@@ -18,15 +34,14 @@ function Dashboard() {
       chartInstance.current = null;
     }
 
-    // Create new chart
+    // Create new chart with fetched data
     chartInstance.current = new Chart(ctx, {
-
       type: 'bar',
       data: {
-        labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        labels: shipmentData.map(item => item.date), // Assuming shipmentData has a date field
         datasets: [{
           label: 'Shipments',
-          data: [12, 19, 3, 5, 2],
+          data: shipmentData.map(item => item.count), // Assuming shipmentData has a count field
           backgroundColor: 'rgba(54, 162, 235, 0.2)',
           borderColor: 'rgba(54, 162, 235, 1)',
           borderWidth: 1
@@ -45,7 +60,7 @@ function Dashboard() {
         chartInstance.current = null;
       }
     };
-  }, []);
+  }, [shipmentData]); // Added shipmentData as a dependency
 
   // Ensure chart container has proper dimensions
   useEffect(() => {
