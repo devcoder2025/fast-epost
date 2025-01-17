@@ -21,25 +21,3 @@ class CachePattern:
         def decorator(func):
             return func
         return decorator
-
-    @staticmethod
-    def cache_aside(cache_manager, ttl):
-        # Placeholder for cache aside pattern
-        def decorator(func):
-            return func
-        return decorator
-
-    @staticmethod
-    def write_through(cache_manager, ttl):
-        # Placeholder for write-through pattern
-        def decorator(func):
-            return func
-        return decorator
-
-class MemoryCache:
-    # Placeholder for memory cache implementation
-    pass
-
-class RedisCache:
-    # Placeholder for Redis cache implementation
-    pass
