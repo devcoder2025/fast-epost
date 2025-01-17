@@ -1,22 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
-import { fetchData } from '../fastEpostService'; // Import the fetchData function
+import fetchData from '../fastEpostService'; // Import the fetchData function as default
 import Shipments from './Shipments'; // Import the Shipments component
 
 function Dashboard() {
   const chartRef = useRef(null);
   const [shipmentData, setShipmentData] = useState([]);
+  const [loading, setLoading] = useState(true); // Add loading state
+  const [error, setError] = useState(null); // Add error state
   const chartInstance = useRef(null);
   const userId = '123'; // Replace with the actual user ID
 
   useEffect(() => {
     // Fetch shipment data
     const fetchShipmentData = async () => {
+      setLoading(true); // Set loading to true before fetching
       try {
         const data = await fetchData(`shipments?userId=${userId}`); // Call the fetchData function with the endpoint
         setShipmentData(data);
       } catch (error) {
+        setError('Failed to load shipment data. Please check your connection and try again.'); // Improved error message
         console.error('Error fetching shipment data:', error);
+      } finally {
+        setLoading(false); // Set loading to false after fetching
       }
     };
 
@@ -75,11 +81,19 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
-      <h2>Dashboard for User {userId}</h2>
-      <div className="chart-container" style={{ position: 'relative', height: '40vh', width: '80vw' }}>
-        <canvas ref={chartRef} id="shipmentChart"></canvas>
-      </div>
-      <Shipments /> {/* Include the Shipments component */}
+      {loading ? ( // Show loading indicator
+        <p>Loading...</p>
+      ) : error ? (
+        <p>{error}</p> // Show improved error message
+      ) : (
+        <>
+          <h2>Dashboard for User {userId}</h2>
+          <div className="chart-container" style={{ position: 'relative', height: '40vh', width: '80vw' }}>
+            <canvas ref={chartRef} id="shipmentChart"></canvas>
+          </div>
+          <Shipments /> {/* Include the Shipments component */}
+        </>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, jsonify
-from fast_epost.config.logging import setup_heroku_logging
+from fast_epost.config.logging import setup_logger
 from fast_epost.config.database import get_db_connection
 from fast_epost.storage.heroku import HerokuStorage
 from fast_epost.cache import TemplateCache
@@ -12,8 +12,11 @@ from fast_epost.security.auth import JWTAuth
 from fast_epost.security.rate_limiter import RateLimiter
 from fast_epost.security import SecurityManager
 
+# Set up logger
+logger = setup_logger()
+
 # Initialize components
-setup_heroku_logging()
+logger.info('Initializing components...')
 db = get_db_connection()
 storage = HerokuStorage()
 app = Flask(__name__)
@@ -44,7 +47,7 @@ async def process_batch_files(files: list):
 
 auth = JWTAuth(secret_key=Settings.get_setting('JWT_SECRET_KEY'))
 
-@app.route('/secure-endpoint')
+@app.route('/secure-endpoint', methods=['GET'])
 @auth.token_required
 def secure_endpoint():
     return jsonify({'message': 'Access granted'})
@@ -70,7 +73,7 @@ security = SecurityManager(secret_key=Settings.get_setting('SECRET_KEY'))
 def get_secure_data():
     return jsonify({'data': 'secure content'})
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', 'GET'])
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400

@@ -12,15 +12,21 @@ const columns = [
 
 function Shipments() {
   const [shipments, setShipments] = useState([]);
+  const [loading, setLoading] = useState(true); // Add loading state
+  const [error, setError] = useState(null); // Add error state
 
   useEffect(() => {
     // Fetch shipments data
     const fetchShipmentsData = async () => {
+      setLoading(true); // Set loading to true before fetching
       try {
         const response = await axios.get('/api/shipments'); // Adjust the API endpoint as needed
         setShipments(response.data);
       } catch (error) {
+        setError('Failed to load shipment data. Please check your connection and try again.'); // Improved error message
         console.error('Error fetching shipment data:', error);
+      } finally {
+        setLoading(false); // Set loading to false after fetching
       }
     };
 
@@ -35,25 +41,31 @@ function Shipments() {
       overflow: 'auto'
     }}>
       <h2>Shipments</h2>
-      <DataGrid
-        rows={shipments}
-        columns={columns}
-        pageSize={5}
-        rowsPerPageOptions={[5]}
-        checkboxSelection
-        disableSelectionOnClick
-        autoHeight
-        sx={{
-          '& .MuiDataGrid-cell': {
-            fontSize: '0.875rem',
-          },
-          '@media (max-width: 768px)': {
+      {loading ? (
+        <p>Loading...</p> // Show loading indicator
+      ) : error ? (
+        <p>{error}</p> // Show improved error message
+      ) : (
+        <DataGrid
+          rows={shipments}
+          columns={columns}
+          pageSize={5}
+          rowsPerPageOptions={[5]}
+          checkboxSelection
+          disableSelectionOnClick
+          autoHeight
+          sx={{
             '& .MuiDataGrid-cell': {
-              fontSize: '0.75rem',
+              fontSize: '0.875rem',
             },
-          }
-        }}
-      />
+            '@media (max-width: 768px)': {
+              '& .MuiDataGrid-cell': {
+                fontSize: '0.75rem',
+              },
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

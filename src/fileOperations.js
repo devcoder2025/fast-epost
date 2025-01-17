@@ -1,4 +1,5 @@
-import fs from 'fs/promises';
+import fs from 'fs/promises'; // Importing file system promises
+import path from 'path'; // Importing path module for file path operations
 
 // Function to read a file asynchronously
 export const readFileAsync = async (filePath) => {
@@ -31,15 +32,15 @@ export const deleteFileAsync = async (filePath) => {
   }
 };
 
+// Function to process multiple files concurrently
 export const batchProcessFiles = async (filePaths) => {
-  const results = [];
-  for (const filePath of filePaths) {
+  const results = await Promise.all(filePaths.map(async (filePath) => {
     try {
-      const data = await readFileAsync(filePath);
-      results.push(data);
+      return await readFileAsync(filePath);
     } catch (error) {
       console.error(`Error processing file ${filePath}:`, error);
+      return null; // Return null for failed operations
     }
-  }
-  return results;
+  }));
+  return results.filter(result => result !== null); // Filter out null results
 };

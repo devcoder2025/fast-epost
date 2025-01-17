@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import '../styles/styles.css';
 
 function LoadingScreen({ onLoadingComplete }) {
-  const [loadingComplete, setLoadingComplete] = useState(false);
+  const [loadingComplete, setLoadingComplete] = useState(false); // State to manage loading completion
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setLoadingComplete(true);
-      onLoadingComplete();
+      setLoadingComplete(true); // Update loading completion state
+      onLoadingComplete(); // Call the onLoadingComplete function
     }, 3000); // 3 seconds loading time
 
     return () => clearTimeout(timer);
@@ -16,7 +16,7 @@ function LoadingScreen({ onLoadingComplete }) {
   return (
     <div className="loading-screen">
       <div className={`loading-logo ${loadingComplete ? 'logo-move-up' : ''}`} />
-      {!loadingComplete && (
+      {!loadingComplete && ( // Show loading bar until loading is complete
         <div className="loading-bar-container">
           <div className="loading-bar" style={{ width: '100%' }} />
         </div>
@@ -24,6 +24,5 @@ function LoadingScreen({ onLoadingComplete }) {
     </div>
   );
 }
-
 
 export default LoadingScreen;
