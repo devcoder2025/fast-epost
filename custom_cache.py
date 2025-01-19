@@ -9,10 +9,6 @@ class EnhancedCache(VendorCache):
         self.logger = logging.getLogger(__name__)  
         self.logger.info("EnhancedCache initialized")  # Log initialization
 
-    def __init__(self, base):
-        super().__init__(base)
-        self.logger = logging.getLogger(__name__)
-
     def clear(self):
         cleared_items = []  
         self.logger.debug("Clearing cache items...")  # Log cache clearing process

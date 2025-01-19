@@ -46,6 +46,7 @@ A documentation of all implemented processes and features in the Fast-Epost proj
 [Add specific usage instructions based on implemented features]
 
 ## Future Enhancements
+- Implement drag-and-drop functionality for improved user experience.
 [List planned features and improvements]
 
 ## Technical Notes

@@ -91,11 +91,12 @@ dashboard_manager = DashboardManager()
 @app.route('/monitoring/dashboard')
 @auth.token_required
 def view_dashboard():
-    return render_template(
-        'dashboard.html',
-        metrics_chart=dashboard_manager.generate_metrics_chart(),
-        stats=dashboard_manager.get_system_stats()
-    )
+    data = {
+        'metrics_chart': dashboard_manager.generate_metrics_chart(),
+        'stats': dashboard_manager.get_system_stats(),
+        'additional_info': 'This is additional information for the dashboard.'
+    }
+    return jsonify(data)
 
 from fast_epost.monitoring import MonitoringSystem
 
