@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import fetchData from '../fastEpostService'; // Import the fetchData function as default
 import Shipments from './Shipments'; // Import the Shipments component
+import logo from '../../logo.svg'; // Import the logo
 
 function Dashboard() {
   const chartRef = useRef(null);
@@ -81,6 +82,7 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
+      <img src={logo} alt="Logo" style={{ width: '100px', marginBottom: '20px' }} /> {/* Display the logo */}
       {loading ? ( // Show loading indicator
         <p>Loading...</p>
       ) : error ? (

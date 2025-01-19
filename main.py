@@ -1,7 +1,14 @@
+import logging
 from custom_cache import EnhancedCache
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 try:
     cache = EnhancedCache("./cache")  # Updated cache path
-    cleared, failed = cache.clear()
+    try:
+        cleared, failed = cache.clear()
+        if failed:
+            logging.warning("Some cache items failed to clear.")
 except Exception as e:
-    print(f"Error during cache operation: {e}")
+    logging.error(f"Error during cache operation: {e}")
