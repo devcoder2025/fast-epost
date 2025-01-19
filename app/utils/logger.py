@@ -1,16 +1,17 @@
 import logging
 import os
+import os
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
-def setup_logger(app):
+def setup_logger(app, log_directory='logs'):
     # Create logs directory if it doesn't exist
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
+    if not os.path.exists(log_directory):
+        os.makedirs(log_directory)
         
     # Set up file handler
     file_handler = RotatingFileHandler(
-        'logs/fastpost.log',
+        f'{log_directory}/fastpost.log',
         maxBytes=1024 * 1024,  # 1MB
         backupCount=10
     )

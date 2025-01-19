@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 from app.models.package import Package
 from app.models.package_history import PackageHistory
@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 bp = Blueprint('tracking', __name__)
 
-@bp.route('/monitor', methods=['GET'])
+@bp.route('/monitor', methods=['GET', 'POST'])
 @jwt_required()
 @limiter.limit("10 per minute")
 @cache.cached(timeout=60)
@@ -32,7 +32,9 @@ def monitor_packages():
                 'message': 'Package nearing 72-hour limit'
             })
     
-    return jsonify({'alerts': alerts})
+    if request.method == 'POST':
+        # Handle POST request logic here
+        return jsonify({'message': 'POST request received'}), 201
 
 @bp.route('/package/<int:package_id>/history', methods=['GET'])
 @jwt_required()
