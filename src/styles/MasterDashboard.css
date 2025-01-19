@@ -1,0 +1,37 @@
+.master-dashboard {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: #f5f5f5;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.dashboard-logo {
+  height: 40px;
+  margin-left: 20px; /* RTL spacing */
+}
+
+/* RTL specific adjustments */
+.feature-controls {
+  direction: rtl;
+  text-align: right;
+}
+
+.feature-toggle {
+  flex-direction: row-reverse;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  direction: rtl;
+}
